@@ -1,6 +1,6 @@
 ﻿using Volo.Abp.DependencyInjection;
 
-namespace MauiBookStore
+namespace MauiBookStore.Services
 {
     public class HelloWorldService : ITransientDependency
     {

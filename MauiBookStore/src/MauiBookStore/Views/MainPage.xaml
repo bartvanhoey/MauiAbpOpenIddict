@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MauiBookStore.Views.MainPage">
+
+    <StackLayout Padding="10">
+        <Image Source="dotnet_bot.png"
+               SemanticProperties.Description="Cute dot net bot waving hi to you!"
+               WidthRequest="200"
+               HeightRequest="260"
+               HorizontalOptions="Center" />
+
+        <StackLayout Padding="40">
+               <Entry Text="{Binding LoginUserName}" Placeholder="Enter user name..." />
+               <Entry Text="{Binding LoginPassword}"  IsPassword="true" Placeholder="Enter password..." />
+               <Button Text="Login"  FontAttributes="Bold" Command="{Binding LoginUserCommand}" HorizontalOptions="FillAndExpand" />       
+        </StackLayout>
+        
+        <Label Margin="20" HorizontalOptions="Center"  Text="{Binding LoginUserMessage}" TextColor="Green"  FontSize="18" FontAttributes="Bold"/>
+    </StackLayout>
+</ContentPage>

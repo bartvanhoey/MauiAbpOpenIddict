@@ -67,125 +67,279 @@ To follow along make sure you have a protected BookAppService in the BookStore a
     }
 ```
 
-### Run DbMigrator project
+### Apply Migrations and Run the Application
 
-To apply the settings above you need to run the DbMigrator project. After, check the **OpenIddictApplications** table of the database to see if the **BookStore_Maui** client has been added.
+* To apply the settings above you need to run the DbMigrator project. After, check the **OpenIddictApplications** table of the database to see if the **BookStore_Maui** client has been added.
+  
+* Run the `BookStore.HttpApi.Host` application to start the API.
 
-## .NET Core console application
+## Ngrok to the rescue
 
-### Create a new .NET Core console application
+When you are running the ABP Framework API on your local computer, the endpoints are reachable on [https://localhost:\<your-port-number\>/api/\<path\>](https://localhost:<your-port-number>/api/\<path\>).
+
+Although you can test out these localhost endpoints on your local machine, it will throw an exception in  a .NET MAUI app.
 
 ```bash
-    dotnet new console -n MauiBookStore
+    System.Net.WebException: Failed to connect to localhost/127.0.0.1:44330 ---> Java.Net.ConnectException: Failed to connect to localhost/127.0.0.1:44330
+```
+
+A .NET MAUI app considers localhost as its own localhost address (mobile device or emulator) and not that of your computer.
+To overcome this problem you can **make use of ngrok**. With ngrok you can **mirror your localhost address to a publicly available url**.
+
+### Download and install ngrok
+
+Go to the [ngrok page](https://ngrok.com/), create an account, and download and install Ngrok.
+
+### Run the Ngrok command
+
+Open a command prompt in the root of your ABP Framework project and enter the command below to start ngrok
+
+```bash
+    // change the <replace-me-with-the-abp-api-port> with the port where the Swagger page is running on
+    ngrok.exe http -region eu https://localhost:<replace-with-the-abp-api-port-number>/
+```
+
+After running this command, you will receive the following output:
+The API is now publicly available on [https://f7db-2a02-810d-98c0-576c-647e-cd22-5b-e9a3.eu.ngrok.io](https://f7db-2a02-810d-98c0-576c-647e-cd22-5b-e9a3.eu.ngrok.io)
+
+![ngrok in action](Images/ngrok.jpg)
+
+### Copy the ngrok url
+
+Copy the **lower forwarding url** as you will need it for use in the .NET MAUI app.
+
+## .NET MAUI app
+
+### Create a new .NET MAUI app
+
+```bash
+    abp new MauiBookStore -t maui -o MauiBookStore --preview
 ```
 
 ### Install nuget packages (in terminal window or nuget package manager)
 
 ```bash
-  dotnet add package IdentityModel.OidcClient --version 5.0.2
-  dotnet add package Newtonsoft.Json --version 13.0.1
+    dotnet add package Refractored.MvvmHelpers --version 1.6.2
 ```
 
-### Add a HttpService class in the root of the project
+### Add an OpenIddictSettings section to the appsettings.json file
 
-When you want to consume a protected API the user has to be **authenticated (username+password)** and **authorized(has the right permissions)**. So, when you call the BookAppService GetListAsync method, in the **header of the request** you need to send **the accesstoken** with.
+```bash
+"OpenIddictSettings": {   
+    "AuthorityUrl": "http://f974-2a02-810d-af3f-f0d8-c533-482a-68e2-8aa9.eu.ngrok.io", 
+    "ClientId" : "BookStore_Maui",
+    "RedirectUri" : "bookstore://",
+    "Scope" : "openid offline_access address email profile roles BookStore",
+    "ClientSecret" : "1q2w3e*"
+}
+```
 
-To obtain the **accesstoken** you can make use of the **nuget package IdentityModel.OidcClient**. All the heavy lifting occurs in the **GetTokensFromBookStoreApi** method (See below). These method **sends a request** to the **disco.TokenEndpoint** of the BookStoreApi and **obtains a TokenResponse**. If the correct properties are sent and the API is running, you should obtain a **TokenResponse (AccessToken, IdentityToken, Scope, ...)**
-
-Afterwards the obtained accesstoken is used in the **SetBearerToken()** of the httpClient.
-
-When you make a request now to the protected BookStore API with the httpClient, the accesstoken is sent with. The BookStore API receives this request and checks the **validity of the accesstoken** and the **permissions**. If these conditions are met, the GetListAsync method of the BookAppService returns the list of books.
+### Add an OpenIddictSettings class to the Services/OpenIddict folder
 
 ```csharp
-using IdentityModel.Client;
-
-namespace MauiBookStore
+public class OpenIddictSettings
 {
-    public class HttpService
-    {
-        public async Task<Lazy<HttpClient>> GetHttpClientAsync(bool setBearerToken, string apiEndpoint)
-        {
-            var client = new Lazy<HttpClient>(() => new HttpClient());
+    public string AuthorityUrl { get; set; }
+    public string ClientId { get; set; }
+    public string RedirectUri { get; set; }
+    public string Scope { get; set; }
+    public string ClientSecret { get; set; }
+}
+```
 
-            if (setBearerToken) client.Value.SetBearerToken(await GetAccessToken(apiEndpoint));
-            
-            client.Value.BaseAddress = new Uri(apiEndpoint); 
-            return await Task.FromResult(client);
+### MainPage.xaml
+
+Replace the content of the MainPage.xaml with the content below:
+
+```html
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MauiBookStore.Views.MainPage">
+
+    <StackLayout Padding="10">
+        <Image Source="dotnet_bot.png"
+               SemanticProperties.Description="Cute dot net bot waving hi to you!"
+               WidthRequest="200"
+               HeightRequest="260"
+               HorizontalOptions="Center" />
+
+        <StackLayout Padding="40">
+               <Entry Text="{Binding LoginUserName}" Placeholder="Enter user name..." />
+               <Entry Text="{Binding LoginPassword}"  IsPassword="true" Placeholder="Enter password..." />
+               <Button Text="Login"  FontAttributes="Bold" Command="{Binding LoginUserCommand}" HorizontalOptions="FillAndExpand" />       
+        </StackLayout>
+        
+        <Label Margin="20" HorizontalOptions="Center"  Text="{Binding LoginUserMessage}" TextColor="Green"  FontSize="18" FontAttributes="Bold"/>
+    </StackLayout>
+</ContentPage>
+```
+
+### Update MainPage.xaml
+
+```csharp
+using MauiBookStore.ViewModels;
+using Volo.Abp.DependencyInjection;
+
+namespace MauiBookStore.Views
+{
+public partial class MainPage : ISingletonDependency
+{
+    public MainPage(MainViewModel mainViewModel)
+    {
+        BindingContext = mainViewModel;
+        InitializeComponent();
         }
-        private static async Task<TokenResponse> GetTokensFromBookStoreApi(string apiEndpoint)
+}
+}
+```
+
+### MainViewModel.cs
+
+Add a **MainViewModel** class in a **ViewModels** folder.
+
+```csharp
+using System.Windows.Input;
+using MauiBookStore.Services.OpenIddict;
+using MvvmHelpers;
+using MvvmHelpers.Commands;
+
+namespace MauiBookStore.ViewModels
+{
+    public class MainViewModel : BaseViewModel
+    {
+        private readonly IIdentityService _identityService;
+
+        public MainViewModel(IIdentityService identityService) => _identityService = identityService;
+
+        private string _loginUserMessage, _loginUserName, _loginPassword;
+        private AsyncCommand _loginUserCommand;
+
+        public ICommand LoginUserCommand => _loginUserCommand ??=new AsyncCommand(LoginUserAsync);
+        private async Task LoginUserAsync() => LoginUserMessage = await _identityService.LoginAsync(LoginUserName, LoginPassword);
+
+        public string LoginUserMessage
         {
-            var discoveryCache = new DiscoveryCache(apiEndpoint);
-            var disco = await discoveryCache.GetAsync();
-            var httpClient = new Lazy<HttpClient>(() => new HttpClient());
-            var response = await httpClient.Value.RequestPasswordTokenAsync(new PasswordTokenRequest
-            {
-                Address = disco.TokenEndpoint, // apiEndpoint/connect/token
-                ClientId = "BookStore_Maui",
-                ClientSecret = "1q2w3e*",
-                UserName = "admin",
-                Password = "1q2w3E*",
-                Scope = "openid offline_access address email phone profile roles BookStore",
-            });
-            return response.IsError ?  new TokenResponse() : response;
+            get => _loginUserMessage;
+            set => SetProperty(ref _loginUserMessage, value);
         }
-        private static async Task<string> GetAccessToken(string apiEndpoint) => (await GetTokensFromBookStoreApi(apiEndpoint)).AccessToken;
+
+        public string LoginUserName
+        {
+            get => _loginUserName;
+            set => SetProperty(ref _loginUserName, value);
+        }
+
+        public string LoginPassword
+        {
+            get => _loginPassword;
+            set => SetProperty(ref _loginPassword, value);
+        }
     }
 }
 ```
 
-### Main Method
+### IdentityService.cs
 
-Below you see the content of the **Program.cs** file. A new **HttpService** gets created and the **GetHttpClientAsync** method is called to get a httpClient.
-Next, we make a request to the BookStore API to obtain the list of books.
-
-Do not forget to change the apiEndpoint to the correct ABP Framework API endpoint (Swagger pager).
+Add an **IIdentityService** interface to a **Services/OpenIddict** folder
 
 ```csharp
-using MauiBookStore;
-using MauiBookStore.MauiBookStore;
-using Newtonsoft.Json;
-using static System.Console;
-using static Newtonsoft.Json.JsonConvert;
-
-// if setBearerToken = false, should throw JsonReaderException: 'json cannot be serialized.'
-// if setBearerToken = true, API should be called an list of books should be returned
-const bool setBearerToken = false;
-const string apiEndpoint = "https://localhost:44317/";
-
-var httpClient = await new HttpService().GetHttpClientAsync(setBearerToken, apiEndpoint);
-
-var response = await httpClient.Value.GetAsync($"{apiEndpoint}api/app/book");
-response.EnsureSuccessStatusCode();
-
-var json = await response.Content.ReadAsStringAsync();
-try
+public interface IIdentityService
 {
-    var books = DeserializeObject<ListResultDto<BookDto>>(json);
-    WriteLine("====================================");
-    if (books?.Items != null)
-        foreach (var book in books.Items)
-            WriteLine(book.Name);
-    WriteLine("====================================");
-
+    Task<string> LoginAsync(string userName, string password);
 }
-catch (JsonReaderException)
+```
+
+Add an **IdentityService** class to a **Services/OpenIddict** folder
+
+```csharp
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+// ReSharper disable InconsistentNaming
+
+namespace MauiBookStore.Services.OpenIddict
 {
-    WriteLine("Deserializing went wrong");
-}
+    public class IdentityService : IIdentityService
+    {
+        private readonly IConfiguration _configuration;
 
+        public IdentityService(IConfiguration configuration) => _configuration = configuration;
+
+        public async Task<string> LoginAsync(string userName, string password)
+        {
+            var oiSettings = _configuration.GetSection(nameof(OpenIddictSettings)).Get<OpenIddictSettings>();
+            var clientId = oiSettings.ClientId;
+            var clientSecret = oiSettings.ClientSecret;
+            var scope = oiSettings.Scope;
+            var ngrokUrl = oiSettings.AuthorityUrl;
+
+            var data = $"grant_type=password&username={userName}&password={password}&client_id={clientId}&client_secret={clientSecret}&scope={scope}";
+
+            var content = new StringContent(data, Encoding.UTF8, "application/x-www-form-urlencoded");
+
+            var httpClient = new HttpClient(GetHttpClientHandler());
+            var response = await httpClient.PostAsync($"{ngrokUrl}/connect/token", content);
+            response.EnsureSuccessStatusCode();
+
+            var stringResult = await response.Content.ReadAsStringAsync();
+            var loginResult = JsonSerializer.Deserialize<IdentityDto>(stringResult, Options);
+
+            return string.IsNullOrWhiteSpace(loginResult?.access_token) ? "UnAuthorized" : "Login Successful!";
+        }
+
+        private HttpClientHandler GetHttpClientHandler()
+        {
+            // EXCEPTION: Javax.Net.Ssl.SSLHandshakeException: 'java.security.cert.CertPathValidatorException:
+            // Trust anchor for certification path not found.'
+            // SOLUTION: 
+            // ATTENTION: DO NOT USE IN PRODUCTION 
+
+            var httpClientHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => { return true; }
+            };
+
+            return httpClientHandler;
+        }
+
+        private JsonSerializerOptions Options => new()
+        {
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true
+        };
+
+    }
+
+    public class IdentityDto
+    {
+        public string access_token { get; set; }
+        public int expires_in { get; set; }
+        public string token_type { get; set; }
+        public string scope { get; set; }
+        public string error { get; set; }
+        public string error_description { get; set; }
+    }
+}
 
 ```
 
-## Run API and .NET Core console application
+### Register Services
 
-Run the **BookStore.HttpApi.Host** of the ABP Framework application first. Start the .NET Core console application next. Below is the result when the accesstoken is successfully set.
+Open MauiProgram.cs and add the following services to the MauiAppBuilder, before the builder.Build() statement.
 
-![Books returned from API](../Images/books_returned_from_api.jpg)
+```csharp
+    builder.Services.AddSingleton<IIdentityService, IdentityService>();
+    builder.Services.AddTransient<MainViewModel>();
+```
 
-If you set the variable **setBearerToken** to false, you will obtain a response from the API that **cannot be deserialized** and a **JsonReaderException** will be thrown.
+## Test the result
 
-Congratulations, you can now consume an OpenIddict protected ABP Framework API from a .NET Core console application!
+Run the **HttpApi.Host** project and make sure **Ngrok** is running too.
+Start the **.NET Maui app**, enter the credentials (user name: **admin** - password: **1q2w3E***) and click the **Login** button.
 
-Check out the [source code](https://github.com/bartvanhoey/AbpAddCustomClaimToAccessToken) of this article on GitHub.
+Et voilà! As you can see, you received an access token from the **ABP Framework API**. Now you can start consuming the API!
+
+Get the [source code](https://github.com/bartvanhoey/MauiAbpOpenIddict) on GitHub.
 
 Enjoy and have fun!

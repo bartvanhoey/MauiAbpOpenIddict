@@ -33,6 +33,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Refractored.MvvmHelpers" Version="1.6.2" />
 		<PackageReference Include="Volo.Abp.Autofac" Version="6.0.0-rc.3" />
 	    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.5" />
 	</ItemGroup>
@@ -58,6 +59,23 @@
 	<ItemGroup>
 	  <None Remove="appsettings.json" />
 	  <EmbeddedResource Include="appsettings.json" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <Folder Include="obj" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <MauiXaml Update="Views\MainPage.xaml">
+	    <SubType>Designer</SubType>
+	  </MauiXaml>
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <Compile Update="Views\MainPage.xaml.cs">
+	    <DependentUpon>MainPage.xaml</DependentUpon>
+	    <SubType>Code</SubType>
+	  </Compile>
 	</ItemGroup>
 
 </Project>
