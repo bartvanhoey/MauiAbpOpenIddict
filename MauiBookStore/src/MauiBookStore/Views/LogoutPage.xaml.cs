@@ -1,15 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MauiBookStore.ViewModels;
 
 namespace MauiBookStore.Views
 {
-    public partial class LogoutPage : ContentPage
+    public partial class LogoutPage
     {
-        public LogoutPage()
+        public LogoutPage(LogoutViewModel logoutViewModel)
         {
+            BindingContext = logoutViewModel;
             InitializeComponent();
         }
     }

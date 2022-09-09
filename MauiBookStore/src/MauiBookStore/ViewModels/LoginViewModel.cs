@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using MauiBookStore.Services.OpenIddict;
 using MauiBookStore.Views;
+using static Microsoft.Maui.Controls.Shell;
 
 namespace MauiBookStore.ViewModels
 {
@@ -16,25 +17,23 @@ namespace MauiBookStore.ViewModels
         public async Task ExecuteLogin()
         {
             IsVisible = false;
-
             if (await _openIddictService.AuthenticationSuccessful())
             {
                 IsVisible = true;
-
                 if (await _openIddictService.IsUserLoggedInAsync())
                 {
-                    await Shell.Current.GoToAsync($"//{nameof(LoginPage)}", false);
-                    await Shell.Current.GoToAsync($"//{nameof(HomePage)}", false);
+                    await Current.GoToAsync($"//{nameof(LoginPage)}", false);
+                    await Current.GoToAsync($"//{nameof(HomePage)}", false);
                 }
                 else
                 {
                     await _openIddictService.LogoutAsync();
-                    await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
+                    await Current.GoToAsync($"//{nameof(LoginPage)}");
                 }
             }
             else
             {
-                await Shell.Current.GoToAsync($"//{nameof(LoginPage)}");
+                await Current.GoToAsync($"//{nameof(LoginPage)}");
                 IsVisible = true;
             }
         }
