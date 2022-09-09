@@ -1,6 +1,6 @@
 ﻿namespace MauiBookStore.Services.OpenIddict
 {
-    public class OpenIddictSettings
+    public class IOPenIddictService
     {
         
     }
