@@ -33,9 +33,17 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Refractored.MvvmHelpers" Version="1.6.2" />
+		<PackageReference Include="CommunityToolkit.Diagnostics" Version="8.0.0" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.0.0" />
+		<PackageReference Include="IdentityModel" Version="6.0.0" />
+		<PackageReference Include="IdentityModel.OidcClient" Version="5.0.2" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="6.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
+		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.23.1" />
 		<PackageReference Include="Volo.Abp.Autofac" Version="6.0.0-rc.3" />
 	    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.5" />
+	    <PackageReference Include="Volo.Abp.Http.Client.IdentityModel" Version="5.3.4" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -64,18 +72,9 @@
 	<ItemGroup>
 	  <Folder Include="obj" />
 	</ItemGroup>
-	
+
 	<ItemGroup>
-	  <MauiXaml Update="Views\MainPage.xaml">
-	    <SubType>Designer</SubType>
-	  </MauiXaml>
-	</ItemGroup>
-	
-	<ItemGroup>
-	  <Compile Update="Views\MainPage.xaml.cs">
-	    <DependentUpon>MainPage.xaml</DependentUpon>
-	    <SubType>Code</SubType>
-	  </Compile>
+		<ProjectReference Include="..\..\..\Bookstore\src\BookStore.HttpApi.Client\BookStore.HttpApi.Client.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -27,10 +27,6 @@ The following tools are needed to be able to run the solution and follow along.
   abp new BookStore -u blazor -o BookStore
 ```
 
-### Implement the Web Application Development tutorial (part1-5)
-
-To follow along make sure you have a protected BookAppService in the BookStore application. For this article I followed the **Web Application Development tutorial** till **part 5: Authorization**.
-
 ### Add the section below in the appsettings.json file of the DbMigrator project
 
 ```bash
@@ -41,27 +37,38 @@ To follow along make sure you have a protected BookAppService in the BookStore a
     }
 ```
 
-### Add a MauiBookStore in the OpenIddictDataSeedContributor class of the Domain project
+### Add a MauiBookStore section in the OpenIddictDataSeedContributor class of the Domain project
 
 ```bash
-    // MauiBookStore
+    // MauiBookStore Section
+    var mauiScopes = new List<string>
+    {
+        "offline_access",
+        OpenIddictConstants.Permissions.Scopes.Address,
+        OpenIddictConstants.Permissions.Scopes.Email,
+        OpenIddictConstants.Permissions.Scopes.Phone,
+        OpenIddictConstants.Permissions.Scopes.Profile,
+        OpenIddictConstants.Permissions.Scopes.Roles,
+        "BookStore"
+    };
+
     var mauiClientId = configurationSection["BookStore_Maui:ClientId"];
     if (!mauiClientId.IsNullOrWhiteSpace())
     {
         var mauiRootUrl = configurationSection["BookStore_Maui:RootUrl"];
-
         await CreateApplicationAsync(
             name: mauiClientId,
             type: OpenIddictConstants.ClientTypes.Confidential,
             consentType: OpenIddictConstants.ConsentTypes.Implicit,
-            scopes: commonScopes,
+            scopes: mauiScopes,
             grantTypes: new List<string>
             {
-                OpenIddictConstants.GrantTypes.Password,
+                OpenIddictConstants.GrantTypes.AuthorizationCode,
                 OpenIddictConstants.GrantTypes.RefreshToken
             },
             secret: configurationSection["BookStore_Maui:ClientSecret"],
             redirectUri: $"{mauiRootUrl}",
+            postLogoutRedirectUri: $"{mauiRootUrl}",
             displayName: "MauiBookStore"
         );
     }
@@ -116,10 +123,17 @@ Copy the **lower forwarding url** as you will need it for use in the .NET MAUI a
     abp new MauiBookStore -t maui -o MauiBookStore --preview
 ```
 
-### Install nuget packages (in terminal window or nuget package manager)
+### Let's Install some nuget packages (in terminal window or nuget package manager)
 
 ```bash
-    dotnet add package Refractored.MvvmHelpers --version 1.6.2
+    dotnet add package System.IdentityModel.Tokens.Jwt --version 6.23.0
+    dotnet add package CommunityToolkit.Diagnostics --version 8.0.0
+    dotnet add package CommunityToolkit.Mvvm --version 8.0.0
+    dotnet add package IdentityModel --version 6.0.0
+    dotnet add package IdentityModel.OidcClient --version 5.0.2
+    dotnet add package Microsoft.Extensions.Configuration --version 6.0.1
+    dotnet add package Microsoft.Extensions.Configuration.Binder --version 6.0.0
+    dotnet add package Microsoft.Extensions.Configuration.Json --version 6.0.0
 ```
 
 ### Add an OpenIddictSettings section to the appsettings.json file
@@ -145,6 +159,25 @@ public class OpenIddictSettings
     public string Scope { get; set; }
     public string ClientSecret { get; set; }
 }
+```
+
+
+
+AndroidManifest.xml(19, 5): [AMM0000] 
+android:exported needs to be explicitly specified for element <activity#MauiBookStore.WebAuthenticationCallbackActivity>. Apps targeting Android 12 and higher are required to specify an explicit value for `android:exported` when the corresponding component has an intent filter defined. See https://developer.android.com/guide/topics/manifest/activity-element#exported for details.
+
+
+```bash
+	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true">
+		<activity android:exported="true" android:launchMode="singleTop" android:noHistory="true" android:name="EkapituroMaui.WebAuthenticationCallbackActivity">
+			<intent-filter>
+				<action android:name="android.intent.action.VIEW" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+				<data android:scheme="ekapituro" />
+			</intent-filter>
+		</activity>
+	</application>
 ```
 
 ### MainPage.xaml

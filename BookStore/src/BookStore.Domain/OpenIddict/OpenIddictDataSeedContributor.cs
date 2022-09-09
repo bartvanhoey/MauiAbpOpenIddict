@@ -76,6 +76,7 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
             "BookStore"
         };
 
+         
         var configurationSection = _configuration.GetSection("OpenIddict:Applications");
 
         //Web Client
@@ -198,24 +199,35 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
             );
         }
 
-        // MauiBookStore
+        // MauiBookStore Section
+        var mauiScopes = new List<string>
+        {
+            "offline_access",
+            OpenIddictConstants.Permissions.Scopes.Address,
+            OpenIddictConstants.Permissions.Scopes.Email,
+            OpenIddictConstants.Permissions.Scopes.Phone,
+            OpenIddictConstants.Permissions.Scopes.Profile,
+            OpenIddictConstants.Permissions.Scopes.Roles,
+            "BookStore"
+        };
+
         var mauiClientId = configurationSection["BookStore_Maui:ClientId"];
         if (!mauiClientId.IsNullOrWhiteSpace())
         {
             var mauiRootUrl = configurationSection["BookStore_Maui:RootUrl"];
-
             await CreateApplicationAsync(
                 name: mauiClientId,
                 type: OpenIddictConstants.ClientTypes.Confidential,
                 consentType: OpenIddictConstants.ConsentTypes.Implicit,
-                scopes: commonScopes,
+                scopes: mauiScopes,
                 grantTypes: new List<string>
                 {
-                    OpenIddictConstants.GrantTypes.Password,
+                    OpenIddictConstants.GrantTypes.AuthorizationCode,
                     OpenIddictConstants.GrantTypes.RefreshToken
                 },
                 secret: configurationSection["BookStore_Maui:ClientSecret"],
                 redirectUri: $"{mauiRootUrl}",
+                postLogoutRedirectUri: $"{mauiRootUrl}",
                 displayName: "MauiBookStore"
             );
         }

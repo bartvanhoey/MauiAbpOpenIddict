@@ -4,12 +4,13 @@ namespace MauiBookStore.Services.Storage
 {
     [Volo.Abp.DependencyInjection.Dependency(ReplaceServices = true)]
     [ExposeServices(typeof(ISecureStorage))]
-    public class CustomSecureStorage : ISecureStorage, ITransientDependency
+    public class StorageService : ISecureStorage, ITransientDependency
     {
         public Task<string> GetAsync(string key)
         {
 #if DEBUG
-            return Task.FromResult(Preferences.Get(key, string.Empty));
+                var fromResult = Task.FromResult(Preferences.Get(key, string.Empty));
+                return fromResult;
 #else
         return SecureStorage.GetAsync(key);
 #endif

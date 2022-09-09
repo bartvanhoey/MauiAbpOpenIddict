@@ -1,7 +1,9 @@
 ﻿namespace MauiBookStore.Services.OpenIddict
 {
-    public class IOPenIddictService
+    public interface IOpenIddictService
     {
-        
+        Task<bool> AuthenticationSuccessful();
+        Task LogoutAsync();
+        Task<bool> IsUserLoggedInAsync();
     }
 }

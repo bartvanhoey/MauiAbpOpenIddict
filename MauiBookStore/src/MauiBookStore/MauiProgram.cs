@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using MauiBookStore.Services.OpenIddict;
 using MauiBookStore.ViewModels;
+using MauiBookStore.Views;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Volo.Abp;
@@ -29,9 +30,16 @@ namespace MauiBookStore
                 options.Services.ReplaceConfiguration(builder.Configuration);
             });
 
-            builder.Services.AddSingleton<IIdentityService, IdentityService>();
-            builder.Services.AddTransient<MainViewModel>();
-
+            builder.Services.AddSingleton<IOpenIddictService, OpenIddictService>();
+            
+            builder.Services.AddTransient<LoginPage>();
+            builder.Services.AddTransient<LoginViewModel>();
+            
+            builder.Services.AddTransient<LogoutPage>();
+            builder.Services.AddTransient<LogoutViewModel>();
+            
+            builder.Services.AddTransient<HomeViewModel>();
+            
             var app = builder.Build();
 
             app.Services.GetRequiredService<IAbpApplicationWithExternalServiceProvider>().Initialize(app.Services);
