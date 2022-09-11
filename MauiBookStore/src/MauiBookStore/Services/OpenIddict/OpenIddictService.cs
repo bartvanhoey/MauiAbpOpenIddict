@@ -1,11 +1,22 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using IdentityModel.OidcClient;
 using Microsoft.Extensions.Configuration;
+using Volo.Abp.DependencyInjection;
+using static System.String;
 using DisplayMode = IdentityModel.OidcClient.Browser.DisplayMode;
 
 namespace MauiBookStore.Services.OpenIddict
 {
-    public class OpenIddictService : IOpenIddictService
+    public interface IOpenIddictService
+    {
+        Task<bool> AuthenticationSuccessful();
+        Task LogoutAsync();
+        Task<bool> IsUserLoggedInAsync();
+    }
+    
+    [Volo.Abp.DependencyInjection.Dependency(ReplaceServices = true)]
+    [ExposeServices(typeof(IOpenIddictService))]
+    public class OpenIddictService : IOpenIddictService, ITransientDependency
     {
         private readonly IConfiguration _configuration;
         private readonly ISecureStorage _storageService;
@@ -21,9 +32,9 @@ namespace MauiBookStore.Services.OpenIddict
             var oidcClient = CreateOidcClient();
             var result = await oidcClient.LoginAsync(new LoginRequest());
 
-            var isAuthenticated = !string.IsNullOrWhiteSpace(result.AccessToken) &&
-                                  !string.IsNullOrWhiteSpace(result.IdentityToken) &&
-                                  !string.IsNullOrWhiteSpace(result.RefreshToken);
+            var isAuthenticated = !IsNullOrWhiteSpace(result.AccessToken) &&
+                                  !IsNullOrWhiteSpace(result.IdentityToken) &&
+                                  !IsNullOrWhiteSpace(result.RefreshToken);
 
             if (!isAuthenticated) return false;
 
@@ -75,7 +86,6 @@ namespace MauiBookStore.Services.OpenIddict
         private OidcClient CreateOidcClient()
         {
             var oIddict = _configuration.GetSection(nameof(OpenIddictSettings)).Get<OpenIddictSettings>();
-
             var options = new OidcClientOptions
             {
                 Authority = oIddict.AuthorityUrl,

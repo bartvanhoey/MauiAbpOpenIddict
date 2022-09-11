@@ -30,15 +30,11 @@ namespace MauiBookStore
                 options.Services.ReplaceConfiguration(builder.Configuration);
             });
 
-            builder.Services.AddSingleton<IOpenIddictService, OpenIddictService>();
-            
             builder.Services.AddTransient<LoginPage>();
             builder.Services.AddTransient<LoginViewModel>();
             
             builder.Services.AddTransient<LogoutPage>();
             builder.Services.AddTransient<LogoutViewModel>();
-            
-            builder.Services.AddTransient<HomeViewModel>();
             
             var app = builder.Build();
 
