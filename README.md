@@ -1,10 +1,13 @@
-## ABP Framework (OpenIddict) consumed by .NET MAUI
+## Consume an ABP API (OpenIddict) from a .NET MAUI app
 
 ## Introduction
 
-From version 6.0.0  the ABP Framework comes with a [MAUI Application Startup Template](https://docs.abp.io/en/abp/6.0/Startup-Templates/MAUI) to create a minimalist MAUI application project and ABP also start to use **OpenIddict** instead of **IdentityServer**.
+In a previous article, I demonstrated how you could consume an ABP Framework API with a .NET MAUI app by providing a username and password in a .NET MAUI page.
+In this article, I will show you a more **secure way of authentication** where we make use of a web browser in the app that **redirects us to the ABP Framework login page**.
 
-This article is about how to consume an **OpenIddict** protected **ABP Framework API** from a **.NET MAUI App**. In the article I will only mention the main moving parts of the program. Keep in mind that only the most important code snippets are included in this article, but you will find the rest of the code needed in the GitHub repository.
+From version 6.0.0 the ABP Framework comes with a [MAUI Application Startup Template](https://docs.abp.io/en/abp/6.0/Startup-Templates/MAUI) to create a minimalist **.NET MAUI** application project and ABP also start to use **OpenIddict** instead of **IdentityServer**.
+
+I will only mention the main moving parts of the program. Keep in mind that only the most important code snippets are included in this article, but you will find the rest of the code needed in the GitHub repository.
 
 ### Source code
 
@@ -14,17 +17,17 @@ The source of the article is [available on GitHub](https://github.com/bartvanhoe
 
 The following tools are needed to be able to run the solution and follow along.
 
-* .NET 6.0 SDK
-* VsCode, Visual Studio 2022 or another compatible IDE
-* ABP CLI 6.0.0
-* Ngrok
+- .NET 6.0 SDK
+- vscode, Visual Studio 2022 or another compatible IDE
+- ABP CLI 6.0.0
+- Ngrok
 
 ## ABP Framework application
 
 ### Create a new ABP Framework application
 
 ```bash
-  abp new BookStore -u blazor -o BookStore
+  abp new BookStore -u blazor -o BookStore --no-ui --preview
 ```
 
 ### Appsettings.json file of the DbMigrator project
@@ -80,13 +83,12 @@ Add a MauiBookStore client section in the OpenIddictDataSeedContributor class of
 
 ### Apply Migrations and Run the Application
 
-* To apply the settings above you need to run the DbMigrator project. After, check the **OpenIddictApplications** table of the database to see if the **BookStore_Maui** client has been added.
-  
-* Run the `BookStore.HttpApi.Host` application to start the API.
+- To apply the settings above you need to run the DbMigrator project. After, check the **OpenIddictApplications** table of the database to see if the **BookStore_Maui** client has been added.
+- Run the `BookStore.HttpApi.Host` application to start the API.
 
 ## Ngrok to the rescue
 
-When you run the **ABP Framework API** on your local computer, the API is reachable on [https://localhost:\<your-port-number\>/api/\<path\>](https://localhost:<your-port-number>/api/\<path\>). Although you can test out the **API endpoints** on your local machine, it will throw an exception in a .NET MAUI app.
+When you run the **ABP Framework API** on your local computer, the API is reachable on [https://localhost:\<your-port-number\>/api/\<path\>](https://localhost:<your-port-number>/api/<path>). Although you can test out the **API endpoints** on your local machine, it will throw an exception in a .NET MAUI app.
 
 ```bash
     System.Net.WebException: Failed to connect to localhost/127.0.0.1:44330 ---> Java.Net.ConnectException: Failed to connect to localhost/127.0.0.1:44330
@@ -116,10 +118,10 @@ Copy the **lower forwarding url** as you will need it for use in the .NET MAUI a
 ### Create a new .NET MAUI app
 
 ```bash
-    abp new MauiBookStore -t maui -o MauiBookStore
+    abp new MauiBookStore -t maui -o MauiBookStore --preview
 ```
 
-### Let's Install some nuget packages (in terminal window or nuget package manager)
+### Let's Install some NuGet packages (in terminal window or NuGet package manager)
 
 ```bash
     dotnet add package System.IdentityModel.Tokens.Jwt --version 6.23.0
@@ -135,12 +137,65 @@ Copy the **lower forwarding url** as you will need it for use in the .NET MAUI a
 ### Add an OpenIddictSettings section to the appsettings.json file of the MAUI app
 
 ```bash
-"OpenIddictSettings": {   
-    "AuthorityUrl": "http://<replace-me-with-the-correct-url>.eu.ngrok.io", 
+"OpenIddictSettings": {
+    "AuthorityUrl": "http://<replace-me-with-the-correct-url>.eu.ngrok.io",
     "ClientId" : "BookStore_Maui",
     "RedirectUri" : "bookstore://",
     "Scope" : "openid offline_access address email profile roles BookStore",
     "ClientSecret" : "1q2w3e*"
+}
+```
+
+### Add a StorageService class to the Services/Storage folder
+
+```csharp
+using Volo.Abp.DependencyInjection;
+
+namespace MauiBookStore.Services.Storage
+{
+    [Volo.Abp.DependencyInjection.Dependency(ReplaceServices = true)]
+    [ExposeServices(typeof(ISecureStorage))]
+    public class StorageService : ISecureStorage, ITransientDependency
+    {
+        public Task<string> GetAsync(string key)
+        {
+#if DEBUG
+                var fromResult = Task.FromResult(Preferences.Get(key, string.Empty));
+                return fromResult;
+#else
+        return SecureStorage.GetAsync(key);
+#endif
+        }
+
+        public bool Remove(string key)
+        {
+#if DEBUG
+            Preferences.Remove(key, string.Empty);
+            return true;
+#else
+        return SecureStorage.Remove(key);
+#endif
+        }
+
+        public void RemoveAll()
+        {
+#if DEBUG
+            Preferences.Clear();
+#else
+        return SecureStorage.RemoveAll();
+#endif
+        }
+
+        public Task SetAsync(string key, string value)
+        {
+#if DEBUG
+            Preferences.Set(key, value);
+            return Task.CompletedTask;
+#else
+        return SecureStorage.SetAsync(key);
+#endif
+        }
+    }
 }
 ```
 
@@ -154,12 +209,69 @@ public class OpenIddictSettings
     public string RedirectUri { get; set; }
     public string Scope { get; set; }
     public string ClientSecret { get; set; }
+    public string PostLogoutRedirectUri { get; set; }
 }
 ```
 
-### Add an OpenIddictService interface/class to the Services/OpenIddict folder
+### Add a WebAuthenticatorBrowser class to the Services/OpenIddict folder
 
-```bash
+```csharp
+using IdentityModel.OidcClient.Browser;
+using IBrowser = IdentityModel.OidcClient.Browser.IBrowser;
+
+namespace MauiBookStore.Services.OpenIddict
+{
+    internal class WebAuthenticatorBrowser : IBrowser
+    {
+        private readonly string _callbackUrl;
+        public WebAuthenticatorBrowser(string callbackUrl = null) => _callbackUrl = callbackUrl ?? "";
+
+        public async Task<BrowserResult> InvokeAsync(BrowserOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var callbackUrl = string.IsNullOrEmpty(_callbackUrl) ? options.EndUrl : _callbackUrl;
+
+                var authResult =
+                    await WebAuthenticator.AuthenticateAsync(new Uri(options.StartUrl), new Uri(callbackUrl));
+                var authorizeResponse = ToRawIdentityUrl(options.EndUrl, authResult);
+                return new BrowserResult
+                {
+                    Response = authorizeResponse
+                };
+            }
+            catch (TaskCanceledException ex)
+            {
+                return new BrowserResult
+                {
+                    ResultType = BrowserResultType.UnknownError,
+                    Error = ex.ToString()
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BrowserResult
+                {
+                    ResultType = BrowserResultType.UnknownError,
+                    Error = ex.ToString()
+                };
+            }
+        }
+
+        private static string ToRawIdentityUrl(string redirectUrl, WebAuthenticatorResult result)
+        {
+            var parameters = result.Properties.Select(pair => $"{pair.Key}={pair.Value}");
+            var values = string.Join("&", parameters);
+            return $"{redirectUrl}#{values}";
+        }
+    }
+}
+```
+
+### Add an IOpenIddictService interface/class to the Services/OpenIddict folder
+
+```csharp
 using System.IdentityModel.Tokens.Jwt;
 using IdentityModel.OidcClient;
 using Microsoft.Extensions.Configuration;
@@ -175,7 +287,7 @@ namespace MauiBookStore.Services.OpenIddict
         Task LogoutAsync();
         Task<bool> IsUserLoggedInAsync();
     }
-    
+
     [Volo.Abp.DependencyInjection.Dependency(ReplaceServices = true)]
     [ExposeServices(typeof(IOpenIddictService))]
     public class OpenIddictService : IOpenIddictService, ITransientDependency
@@ -265,12 +377,12 @@ namespace MauiBookStore.Services.OpenIddict
 }
 ```
 
-### Copy/paste the Views (+ codebehind pages) and ViewModels from the source code
+### Copy/paste the Views (+ code-behind pages) and ViewModels from the source code
 
-* LoginPage.xaml/LoginPage.xaml.cs/LoginViewModel.cs
-* LogoutPage.xaml/LogoutPage.xaml.cs/LogoutViewModel.cs
-* HomePage.xaml/HomePage.xaml.cs
-  
+- LoginPage.xaml/LoginPage.xaml.cs/LoginViewModel.cs
+- LogoutPage.xaml/LogoutPage.xaml.cs/LogoutViewModel.cs
+- HomePage.xaml/HomePage.xaml.cs
+
 ### Replace the content of the AppShell page
 
 ```bash
@@ -288,19 +400,19 @@ namespace MauiBookStore.Services.OpenIddict
 </Shell>
 ```
 
-### Register the Pages and ViewModels in  MauiProgram.cs
+### Register the Pages and ViewModels in MauiProgram.cs
 
 ```csharp
     \\ ... other code here
-    
+
     builder.Services.AddTransient<LoginPage>();
     builder.Services.AddTransient<LoginViewModel>();
-    
+
     builder.Services.AddTransient<LogoutPage>();
     builder.Services.AddTransient<LogoutViewModel>();
-    
+
     var app = builder.Build();
-````
+```
 
 ### WebAuthenticationCallbackActivity in the root of the Android project
 
@@ -323,16 +435,21 @@ namespace MauiBookStore
 }
 ```
 
+### Create a CallBackUri const in App.xaml.cs
+
+```csharp
+    public const string CallbackUri = "bookstore://";
+```
+
 ### Update the AndroidManifest.xml file
 
 I you try running your app now, you will probably get the error below:
 
-
 ```bash
 AndroidManifest.xml(19, 5): [AMM0000]
-android:exported needs to be explicitly specified for element <activity#MauiBookStore.WebAuthenticationCallbackActivity>. 
+android:exported needs to be explicitly specified for element <activity#MauiBookStore.WebAuthenticationCallbackActivity>.
 
-Apps targeting Android 12 and higher are required to specify an explicit value for `android:exported` when the corresponding component has an intent filter defined. 
+Apps targeting Android 12 and higher are required to specify an explicit value for `android:exported` when the corresponding component has an intent filter defined.
 
 See https://developer.android.com/guide/topics/manifest/activity-element#exported for details.
 
@@ -371,7 +488,14 @@ To overcome this problem, update your **AndroidManifest.xml** file
 ## Test the result
 
 Run the **HttpApi.Host** project and make sure **Ngrok** is running too.
-Start the **.NET Maui app**, enter the credentials (user name: **admin** - password: **1q2w3E***) and click the **Login** button.
+
+Start the **.NET Maui app** and click the **Login** button to display the ABP Framework login page.
+
+Enter the standard credentials (user name: **admin** - password: **1q2w3E\***) and click Login.
+You will be redirected to the HomePage of the app.
+
+
+
 
 Et voilà! As you can see, you received an access token from the **ABP Framework API**. Now you can start consuming the API!
 
@@ -387,12 +511,12 @@ I decided to write a little **Batch script** (Windows only) to automate this pro
 
 #### Create Ngrok.bat file
 
-Create a file Ngrok.bat in the root of your ABP Framework project and paste in the code below. You will probably also need to install **jq** (Command-line JSON processor).
+Create a file Ngrok.bat in the root of your ABP Framework project and paste into the code below. You will probably also need to install **jq** (Command-line JSON processor).
 
 ```bash
 @echo off
 set sourceFile="C:\<your-path-to-the-appsettings-file-here>\appsettings.json"
-set portNumber=<api-port-number-here>  
+set portNumber=<api-port-number-here>
 
 setlocal disabledelayedexpansion
 
